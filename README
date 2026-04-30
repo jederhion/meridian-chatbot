@@ -1,112 +1,94 @@
 Meridian Electronics — AI Customer Support Platform
-
 This repository contains a production-ready AI-powered customer support system for Meridian Electronics. The platform enables users to check product availability, manage orders, and handle account inquiries through a secure, tool-augmented conversational agent.
 
 Beyond a simple chatbot, this system demonstrates robust AI orchestration, safety guardrails, infrastructure automation, and observability best practices.
 
 Core Capabilities
 Intelligent Query Enhancement
-
 User queries are not passed directly to the model. Instead, they are pre-processed and enhanced to improve clarity, completeness, and tool alignment.
 
-Expands vague or underspecified queries into structured intents
-Injects relevant context to improve downstream tool execution
-Normalizes user input for consistent agent behavior
+Contextual Expansion: Expands vague or underspecified queries into structured intents using conversation history.
 
-This significantly reduces ambiguity and improves response accuracy, especially for multi-step workflows like order lookups.
+Intent Refinement: Normalizes user input for consistent agent behavior and fixes typos.
+
+Implementation: backend/utils/prompt_enhancer.py
 
 AI Orchestration & Tooling
+The system uses a LangGraph-based ReAct agent to dynamically reason about user requests and invoke backend tools via the Model Context Protocol (MCP).
 
-The system uses a LangGraph-based ReAct agent to dynamically reason about user requests and invoke backend tools via MCP (Model Context Protocol).
+Dynamic Tool Selection: Automatically loads and selects tools based on user intent.
 
-Dynamic tool selection based on user intent
-Strict tool dependency for all critical data (inventory, orders, pricing)
-No hallucinated responses — all outputs must be grounded in tool results
+Strict Grounding: The agent is strictly instructed to rely on internal tools for inventory and pricing to prevent hallucinations.
+
+Implementation: backend/graph/mcp_agent.py
+
 MCP Integration
+The agent connects to internal services via a streaming MCP endpoint, decoupling AI logic from business systems.
 
-The agent connects to internal services via a streaming MCP endpoint:
+Transport: Supports real-time tool execution via Server-Sent Events (SSE).
 
-Supports real-time tool execution via SSE
-Decouples AI logic from backend systems
-Enables scalable, service-oriented architecture
+Configuration: Target URL defined via MCP_SERVER_URL.
 
+Implementation: backend/graph/mcp_agent.py (utilizing streamablehttp_client)
 
 Guardrails & Safety
-
 A multi-layered guardrail system ensures reliability, security, and professional behavior.
 
 Input Guardrails
-Detects and blocks prompt injection attempts
-Sanitizes malformed or adversarial inputs
-Output Guardrails
-Prevents leakage of internal prompts or system details
-Enforces a consistent, customer-safe tone
-Filters restricted or unsafe content
-Execution Constraints
-Mandatory tool usage for all factual responses
-No parameter guessing (e.g., order IDs must come from user or tools)
-Timeout protection (60s) to prevent runaway executions
+Injection Protection: Scans for common prompt injection patterns (e.g., "ignore previous instructions") and blocks malicious overrides.
 
-These safeguards ensure the system behaves predictably even under adversarial conditions.
+Implementation: backend/utils/guardrails.py (check_for_prompt_injection)
+
+Output Guardrails
+Leakage Prevention: Scans for and redacts sensitive data like OpenAI API keys or internal system prompts.
+
+Professional Tone: Filters forbidden phrases to maintain a customer-safe tone.
+
+Implementation: backend/utils/guardrails.py (apply_output_guardrails)
+
+Execution Constraints
+Timeout Protection: A 60-second timeout prevents "hanging" processes during complex tool calls.
+
+Recursion Limit: Prevents infinite loops in agent reasoning (limit set to 5 steps).
 
 Observability & Monitoring
+Designed for production-grade visibility into performance, cost, and reliability.
 
-The platform is designed with production-grade observability to monitor performance, cost, and reliability.
+Structured Logging: Uses a dedicated Meridian_Support_Engine logger to capture connection status, agent steps, and errors.
 
-Structured Logging
-Centralized logger (Meridian_Support_Engine)
-Captures:
-Tool connection status
-Agent reasoning steps
-Execution errors
-Performance Metrics
-Request-level latency tracking
-X-Process-Time header injected into responses
-End-to-end timing visibility
-Token & Cost Monitoring
-Tracks token usage per request/user
-Logs metadata for cost analysis and optimization
-Health Checks
-Root endpoint (/) for instant service health validation
-Useful for load balancers and uptime monitoring
+Latency Tracking: Middleware calculates processing time for every request and injects an X-Process-Time header.
 
+Token & Cost Monitoring: Tracks token consumption per user and logs metadata for LLM cost analysis.
+
+Health Checks: Root endpoint (/) provides instant service health validation.
+
+Implementation: backend/main.py (Middleware) and backend/graph/mcp_agent.py (Token tracking)
 
 Infrastructure & Deployment
 Containerization
-Fully Dockerized frontend and backend
-Cross-platform builds (linux/amd64)
-Automated via deploy.sh
+Dockerized Stack: Separate Dockerfiles for frontend and backend, optimized for cross-platform builds.
+
+Automation: deploy.sh automates the build and push process to Amazon ECR.
+
 Terraform (Infrastructure as Code)
+AWS Provisioning: Manages ECR repositories, IAM roles, and AWS App Runner services.
 
-Infrastructure is provisioned using Terraform for reproducibility and scalability:
+Implementation: terraform/main.tf
 
-Amazon ECR for container storage
-IAM roles with scoped permissions
-AWS App Runner for managed deployment
-Environment Configuration
-
-Secure runtime configuration via environment variables:
-
-OPENAI_API_KEY
-MCP_SERVER_URL
-
-This setup enables seamless, repeatable deployments across environments.
-
+Configuration
+Environment Variables: Managed via backend/config.py and provisioned in App Runner for secure runtime access.
 
 Testing Strategy
-
 A comprehensive test suite ensures both correctness and resilience.
 
-Agent Tests
-Mock MCP/SSE connections
-Validate tool loading and reasoning logic
-Ensure deterministic agent behavior
-API Tests
-Verify endpoint responses
-Validate error handling for missing configs
-Ensure system stability under edge cases
+Agent Tests: Validate tool loading and reasoning logic using mock connections.
+
+API Tests: Ensure endpoint health and correct handling of environment configurations.
+
+Implementation: backend/tests/
 
 Run tests:
 
+Bash
 cd backend
 pytest tests/ -v
