@@ -1,61 +1,112 @@
+Meridian Electronics — AI Customer Support Platform
 
-Meridian Electronics — AI Customer Support Bot
-This repository contains a production-ready prototype for an AI-powered chatbot designed for Meridian Electronics. The bot assists customers with checking product availability, managing orders, and account inquiries by interfacing with internal business systems via the Model Context Protocol (MCP).
+This repository contains a production-ready AI-powered customer support system for Meridian Electronics. The platform enables users to check product availability, manage orders, and handle account inquiries through a secure, tool-augmented conversational agent.
 
-🏗️ Architecture & Integration
-The system follows a clean, modular architecture designed for high availability and security:
+Beyond a simple chatbot, this system demonstrates robust AI orchestration, safety guardrails, infrastructure automation, and observability best practices.
 
-AI Orchestration: Uses a LangGraph-based ReAct agent to dynamically resolve user requests by calling MCP tools.
+Core Capabilities
+Intelligent Query Enhancement
 
-MCP Transport: The bot connects to an external Meridian internal services layer via Streamable HTTP (SSE) at https://order-mcp-74afyau24q-uc.a.run.app/mcp.
+User queries are not passed directly to the model. Instead, they are pre-processed and enhanced to improve clarity, completeness, and tool alignment.
 
-Infrastructure: Fully containerized and deployed on AWS App Runner using Terraform for Infrastructure as Code (IaC).
+Expands vague or underspecified queries into structured intents
+Injects relevant context to improve downstream tool execution
+Normalizes user input for consistent agent behavior
 
-🛡️ Production Guardrails
-To ensure a safe and professional customer experience, the system implements multi-layered guardrails:
+This significantly reduces ambiguity and improves response accuracy, especially for multi-step workflows like order lookups.
 
-Mandatory Tool Usage: The agent is strictly instructed to rely on internal tools for inventory, pricing, and order status to prevent hallucinations.
+AI Orchestration & Tooling
 
-Data Integrity: The AI must explicitly use data returned from MCP tools and is forbidden from guessing missing parameters, such as Order IDs or account details.
+The system uses a LangGraph-based ReAct agent to dynamically reason about user requests and invoke backend tools via MCP (Model Context Protocol).
 
-Input/Output Security:
+Dynamic tool selection based on user intent
+Strict tool dependency for all critical data (inventory, orders, pricing)
+No hallucinated responses — all outputs must be grounded in tool results
+MCP Integration
 
-Prompt Injection Protection: Validates user input to prevent malicious overrides.
+The agent connects to internal services via a streaming MCP endpoint:
 
-Forbidden Content: Automatically filters output to ensure the bot maintains a professional tone and does not expose internal system prompts.
+Supports real-time tool execution via SSE
+Decouples AI logic from backend systems
+Enables scalable, service-oriented architecture
 
-Execution Safety: A 60-second timeout guard prevents "hanging" processes during complex tool calls.
 
-📊 Observability & Monitoring
-The prototype includes built-in observability features to track performance and system health:
+Guardrails & Safety
 
-Structured Logging: A dedicated Meridian_Support_Engine logger captures detailed system events, including tool connection status and agent execution errors.
+A multi-layered guardrail system ensures reliability, security, and professional behavior.
 
-Latency Tracking: Custom middleware calculates and logs the processing time for every API request, injecting an X-Process-Time header into responses.
+Input Guardrails
+Detects and blocks prompt injection attempts
+Sanitizes malformed or adversarial inputs
+Output Guardrails
+Prevents leakage of internal prompts or system details
+Enforces a consistent, customer-safe tone
+Filters restricted or unsafe content
+Execution Constraints
+Mandatory tool usage for all factual responses
+No parameter guessing (e.g., order IDs must come from user or tools)
+Timeout protection (60s) to prevent runaway executions
 
-Token & Usage Metrics: The system tracks token consumption per user and logs usage metadata to monitor LLM costs.
+These safeguards ensure the system behaves predictably even under adversarial conditions.
 
-Health Monitoring: A root-level health check endpoint (/) provides instant status verification for the Meridian Support Engine.
+Observability & Monitoring
 
-🚀 Deployment & DevOps
-Build Workflow
-The deploy.sh script automates the creation of cross-platform Docker images (linux/amd64) and pushes them to Amazon ECR.
+The platform is designed with production-grade observability to monitor performance, cost, and reliability.
 
-Terraform Deployment
-Infrastructure is managed through main.tf, which provisions:
+Structured Logging
+Centralized logger (Meridian_Support_Engine)
+Captures:
+Tool connection status
+Agent reasoning steps
+Execution errors
+Performance Metrics
+Request-level latency tracking
+X-Process-Time header injected into responses
+End-to-end timing visibility
+Token & Cost Monitoring
+Tracks token usage per request/user
+Logs metadata for cost analysis and optimization
+Health Checks
+Root endpoint (/) for instant service health validation
+Useful for load balancers and uptime monitoring
 
-ECR Repositories for the frontend and backend.
 
-IAM Roles with scoped permissions for ECR access.
+Infrastructure & Deployment
+Containerization
+Fully Dockerized frontend and backend
+Cross-platform builds (linux/amd64)
+Automated via deploy.sh
+Terraform (Infrastructure as Code)
 
-App Runner Services configured with production environment variables, including the MCP_SERVER_URL and OPENAI_API_KEY.
+Infrastructure is provisioned using Terraform for reproducibility and scalability:
 
-🧪 Testing
-The system includes a robust test suite to verify both logic and integration:
+Amazon ECR for container storage
+IAM roles with scoped permissions
+AWS App Runner for managed deployment
+Environment Configuration
 
-Bash
-# Run tests from the backend directory
+Secure runtime configuration via environment variables:
+
+OPENAI_API_KEY
+MCP_SERVER_URL
+
+This setup enables seamless, repeatable deployments across environments.
+
+
+Testing Strategy
+
+A comprehensive test suite ensures both correctness and resilience.
+
+Agent Tests
+Mock MCP/SSE connections
+Validate tool loading and reasoning logic
+Ensure deterministic agent behavior
+API Tests
+Verify endpoint responses
+Validate error handling for missing configs
+Ensure system stability under edge cases
+
+Run tests:
+
+cd backend
 pytest tests/ -v
-Agent Tests: Mock SSE connections to verify tool loading and agent response logic without making external network calls.
-
-API Tests: Validate endpoint health and ensure the system correctly handles missing environment configurations.
