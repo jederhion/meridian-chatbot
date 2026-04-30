@@ -52,24 +52,13 @@ def test_chat_endpoint_success(mock_save_message, mock_run_agent):
         user_id="test_user_1"
     )
 
-def test_chat_endpoint_missing_system_key():
-    """Verify the system fails safely if the server admin forgets to set OPENAI_API_KEY."""
-    # Ensure the key is missing
-    if "OPENAI_API_KEY" in os.environ:
-        del os.environ["OPENAI_API_KEY"]
-        
-    response = client.post(
-        "/api/chat",
-        json={"thread_id": "thread_123", "message": "Hello?"}
-    )
-
-    assert response.status_code == 500
-    assert "Server misconfiguration: Missing API Key" in response.json()["detail"]
-
-
-@patch("api.routers.chat.run_mcp_agent", new_callable=AsyncMock) # ✨ Added this mock
+@patch("api.routers.chat.run_mcp_agent", new_callable=AsyncMock)
 def test_chat_endpoint_missing_system_key(mock_run_agent):
     """Verify the system fails safely if the server admin forgets to set OPENAI_API_KEY."""
+    
+    # ✨ Safeguard to prevent RecursionError if the endpoint accidentally tries to return the mock
+    mock_run_agent.return_value = "Fallback string to prevent recursion"
+    
     # Ensure the key is missing
     if "OPENAI_API_KEY" in os.environ:
         del os.environ["OPENAI_API_KEY"]

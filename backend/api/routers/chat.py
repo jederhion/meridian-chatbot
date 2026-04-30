@@ -18,7 +18,8 @@ router = APIRouter(prefix="/api", tags=["Chat"])
 @limiter.limit("10/minute")
 async def chat_with_bot(request: Request, chat_req: ChatRequest, user: dict = Depends(get_current_user)):
     try:
-        # Fetch the API key from the environment instead of the user
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(status_code=500, detail="Server misconfiguration: Missing API Key")
 
         # Save user message 
         save_message(chat_req.thread_id, "user", chat_req.message, user["id"])
