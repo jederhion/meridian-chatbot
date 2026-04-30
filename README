@@ -1,114 +1,124 @@
-Meridian Electronics — AI Customer Support Platform
-This repository contains a production-ready AI-powered customer support system for Meridian Electronics. The platform enables users to check product availability, manage orders, and handle account inquiries through a secure, tool-augmented conversational agent.
+# Meridian Electronics — AI Customer Support Platform
+
+A production-ready AI-powered customer support system for Meridian Electronics. The platform enables users to check product availability, manage orders, and handle account inquiries through a secure, tool-augmented conversational agent.
 
 Beyond a simple chatbot, this system demonstrates robust AI orchestration, safety guardrails, infrastructure automation, and observability best practices.
 
-Core Capabilities
-Intelligent Query Enhancement
+---
+
+## Core Capabilities
+
+### Intelligent Query Enhancement
+
 User queries are not passed directly to the model. Instead, they are pre-processed and enhanced to improve clarity, completeness, and tool alignment.
 
-Contextual Expansion: Expands vague or underspecified queries into structured intents using conversation history.
+- **Contextual Expansion** — Expands vague or underspecified queries into structured intents using conversation history.
+- **Intent Refinement** — Normalizes user input for consistent agent behavior and fixes typos.
 
-Intent Refinement: Normalizes user input for consistent agent behavior and fixes typos.
+📄 `backend/utils/prompt_enhancer.py`
 
-Implementation: backend/utils/prompt_enhancer.py
+---
 
-AI Orchestration & Tooling
+### AI Orchestration & Tooling
+
 The system uses a LangGraph-based ReAct agent to dynamically reason about user requests and invoke backend tools via the Model Context Protocol (MCP).
 
-Dynamic Tool Selection: Automatically loads and selects tools based on user intent.
+- **Dynamic Tool Selection** — Automatically loads and selects tools based on user intent.
+- **Strict Grounding** — The agent is strictly instructed to rely on internal tools for inventory and pricing to prevent hallucinations.
 
-Strict Grounding: The agent is strictly instructed to rely on internal tools for inventory and pricing to prevent hallucinations.
+📄 `backend/graph/mcp_agent.py`
 
-Implementation: backend/graph/mcp_agent.py
+---
 
-MCP Integration
+### MCP Integration
+
 The agent connects to internal services via a streaming MCP endpoint, decoupling AI logic from business systems.
 
-Transport: Supports real-time tool execution via Server-Sent Events (SSE).
+- **Transport** — Supports real-time tool execution via Streamable HTTP.
+- **Configuration** — Target URL defined via `MCP_SERVER_URL`.
 
-Configuration: Target URL defined via MCP_SERVER_URL.
+📄 `backend/graph/mcp_agent.py`
 
-Implementation: backend/graph/mcp_agent.py (utilizing streamablehttp_client)
+---
 
-Guardrails & Safety
+### Guardrails & Safety
+
 A multi-layered guardrail system ensures reliability, security, and professional behavior.
 
-Input Guardrails
-Injection Protection: Scans for common prompt injection patterns (e.g., "ignore previous instructions") and blocks malicious overrides.
+#### Input Guardrails
+- **Injection Protection** — Scans for common prompt injection patterns (e.g., "ignore previous instructions") and blocks malicious overrides.
 
-Implementation: backend/utils/guardrails.py (check_for_prompt_injection)
+#### Output Guardrails
+- **Leakage Prevention** — Scans for and redacts sensitive data like API keys or internal system prompts.
+- **Professional Tone** — Filters forbidden phrases to maintain a customer-safe tone.
 
-Output Guardrails
-Leakage Prevention: Scans for and redacts sensitive data like OpenAI API keys or internal system prompts.
+#### Execution Constraints
+- **Timeout Protection** — A 60-second timeout prevents hanging processes during complex tool calls.
+- **Recursion Limit** — Prevents infinite loops in agent reasoning (limit: 5 steps).
 
-Professional Tone: Filters forbidden phrases to maintain a customer-safe tone.
+📄 `backend/utils/guardrails.py`
 
-Implementation: backend/utils/guardrails.py (apply_output_guardrails)
+---
 
-Execution Constraints
-Timeout Protection: A 60-second timeout prevents "hanging" processes during complex tool calls.
+### Observability & Monitoring
 
-Recursion Limit: Prevents infinite loops in agent reasoning (limit set to 5 steps).
-
-Observability & Monitoring
 Designed for production-grade visibility into performance, cost, and reliability.
 
-Structured Logging: Uses a dedicated Meridian_Support_Engine logger to capture connection status, agent steps, and errors.
+- **Structured Logging** — Uses a dedicated `Meridian_Support_Engine` logger to capture connection status, agent steps, and errors.
+- **Latency Tracking** — Middleware calculates processing time for every request and injects an `X-Process-Time` header.
+- **Token & Cost Monitoring** — Tracks token consumption per user and logs metadata for LLM cost analysis.
+- **Health Checks** — Root endpoint (`/`) provides instant service health validation.
 
-Latency Tracking: Middleware calculates processing time for every request and injects an X-Process-Time header.
+📄 `backend/main.py`, `backend/graph/mcp_agent.py`
 
-Token & Cost Monitoring: Tracks token consumption per user and logs metadata for LLM cost analysis.
+---
 
-Health Checks: Root endpoint (/) provides instant service health validation.
+## Infrastructure & Deployment
 
-Implementation: backend/main.py (Middleware) and backend/graph/mcp_agent.py (Token tracking)
+### Containerization
 
-Infrastructure & Deployment
-Containerization
-Dockerized Stack: Separate Dockerfiles for frontend and backend, optimized for cross-platform builds.
+- **Dockerized Stack** — Separate Dockerfiles for frontend and backend, optimized for cross-platform builds.
+- **Automation** — `deploy.sh` automates the build and push process to Amazon ECR.
 
-Automation: deploy.sh automates the build and push process to Amazon ECR.
+### Terraform (Infrastructure as Code)
 
-Terraform (Infrastructure as Code)
-AWS Provisioning: Manages ECR repositories, IAM roles, and AWS App Runner services.
+AWS provisioning managed via Terraform, covering ECR repositories, IAM roles, and **AWS App Runner** services for both frontend and backend. App Runner handles container orchestration, auto-scaling, and HTTPS termination without managing servers.
 
-Implementation: terraform/main.tf
+📄 `terraform/main.tf`
 
-Configuration
-Environment Variables: Managed via backend/config.py and provisioned in App Runner for secure runtime access.
+### Configuration
 
-Testing Strategy
+Environment variables are managed via `backend/config.py` and provisioned in App Runner for secure runtime access.
+
+---
+
+## Testing
+
+### Unit & API Tests
+
 A comprehensive test suite ensures both correctness and resilience.
 
-Agent Tests: Validate tool loading and reasoning logic using mock connections.
+- **Agent Tests** — Validate tool loading and reasoning logic using mock connections.
+- **API Tests** — Ensure endpoint health and correct handling of environment configurations.
+- **Customer Authentication Tests** - Verifies that the agent correctly identifies and processes customer credentials across a set of test accounts, with full MCP transport and session mocking (including the 3-tuple `streamablehttp_client` return).
 
-API Tests: Ensure endpoint health and correct handling of environment configurations.
-
-Implementation: backend/tests/
-
-Run tests:
-
-Bash
+```bash
 cd backend
 pytest tests/ -v
+```
 
+### Evaluation Suite
 
-Comprehensive Evaluation
-Beyond isolated unit tests, the system includes an automated evaluation pipeline to score the AI agent against real-world customer scenarios and ensure it strictly adheres to Meridian Electronics' business logic.
+Beyond isolated unit tests, the system includes an automated evaluation pipeline to score the AI agent against real-world customer scenarios.
 
-The evaluation suite (backend/evaluation.py) tests the live agent against a predefined dataset of:
+The evaluation suite (`backend/evaluation.py`) tests the live agent against a predefined dataset covering:
 
-Happy Paths: Core workflows like inventory lookup and order status checks.
+- **Happy Paths** — Core workflows like inventory lookup and order status checks.
+- **Customer Authentication** — Ensuring the agent correctly parses emails and PINs to retrieve sensitive account data.
+- **Edge Cases** — Handling missing parameters gracefully and clarifying vague product requests.
+- **Adversarial** — Verifying the agent refuses out-of-scope questions and resists prompt injection attempts.
 
-Customer Authentication: Ensuring the agent correctly parses emails and PINs to retrieve sensitive account data.
-
-Edge Cases: Handling missing parameters gracefully (e.g., asking for an order ID instead of hallucinating one) and clarifying vague product requests.
-
-Out of Bounds & Adversarial: Verifying the agent refuses non-technical questions and strictly resists prompt injection attempts to leak its system prompt.
-
-Run the evaluation:
-
-Bash
+```bash
 cd backend
 uv run evaluation.py
+```
