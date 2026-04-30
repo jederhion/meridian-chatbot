@@ -1,0 +1,39 @@
+# Environments & Secrets
+.env
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+
+*.env
+*.venv
+*venv/
+*env/
+*__pycache__/
+
+# Next.js / Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Node
+node_modules/
+
+# Database / Memory
+ingestion/vector_store/
+*.sqlite3
+*.db
+
+backend/temp_uploads/
+backend/vector_store/
+
+# OS Files
+.DS_Store
+
+*.terraform/
+terraform/terraform.tfstate
+*terraform.tfstate.backup
+*.terraform.lock.hcl
+*.tfvars

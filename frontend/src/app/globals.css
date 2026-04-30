@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9fafb; /* Matches gray-50 */
+  --foreground: #111827; /* Matches gray-900 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Removed the @media (prefers-color-scheme: dark) block.
+  This forces the base text and background colors to remain consistent
+  with your Tailwind classes, preventing light text on white backgrounds!
+*/
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Global safety net: ensures all textboxes always have dark text and standard backgrounds */
+input, textarea, select {
+  color: #111827;
+  background-color: transparent;
+}
+
+/* Fixes the placeholder color being too light in some browsers */
+input::placeholder, textarea::placeholder {
+  color: #9ca3af; /* Tailwind gray-400 */
+  opacity: 1; 
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(1rem); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out both;
+}

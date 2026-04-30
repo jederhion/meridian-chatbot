@@ -1,0 +1,45 @@
+# Omni-Bot Platform (CustomBot MVP)
+
+An enterprise-grade AI agent platform that empowers users to create, configure, and interact with specialized AI assistants. The platform features native support for Retrieval-Augmented Generation (RAG) and dynamic tool execution via the Model Context Protocol (MCP).
+
+---
+
+## Problem Selection & Scope
+**The Problem:** Enterprise teams need specialized AI agents, but existing solutions often hardcode toolsets, limit dynamic knowledge updates, or lack the safety guardrails necessary for reliable operation.
+**Our Scope:** A modular microservice platform where users can dynamically forge bots with custom personas, localized knowledge bases (RAG), and remote toolsets (MCP) without altering the core execution engine.
+
+## Architecture & Storage Strategy
+The platform operates on a robust microservice architecture with intentional trade-offs for cost and scalability:
+
+* **Frontend:** Next.js 16 & React 19 built with Tailwind CSS v4. Handles chat sessions, bot creation, and multipart file uploads.
+* **Main API Orchestrator (FastAPI):** The central hub managing ingestion, orchestration, and database operations. 
+* **Standalone System MCP (FastMCP):** Decoupled microservice hosting built-in tools (Google Search, arXiv, SEC EDGAR) over Server-Sent Events (SSE).
+
+**Database & Storage Design Choices:**
+* **Relational State (SQLite):** To minimize infrastructure costs during MVP and initial testing, we use SQLite (`backend/api/db.py`). When deployed via AWS AppRunner, this naturally provides an ephemeral state that resets between deployments, which is perfect for maintaining a clean demo environment. For persistent production scaling, the data layer is structured to easily migrate to PostgreSQL.
+* **Vector & File Storage (AWS S3):** Uploaded files are pushed to an AWS S3 bucket as temporary storage before ingestion. The chunks are then embedded and stored in AWS S3 Vectors.
+* **Asynchronous Ingestion:** Heavy PDF parsing is routed to ephemeral EC2 Spot Instances to prevent API timeouts.
+
+## Orchestration, Context Engineering & Guardrails
+Instead of basic linear chains, we utilize **LangGraph and LangChain's ReAct agents** for robust multi-step reasoning (`backend/graph/bot_runner.py`).
+
+* **Context Engineering & Prompt Enhancement:** Before user queries hit the agent or the RAG pipeline, they pass through our enhancement layer (`backend/utils/context_engineering.py` and `backend/utils/prompt_enhancer.py`). This restructures ambiguous queries using the thread's chat history, drastically improving vector retrieval accuracy and model interaction quality.
+* **Dynamic Tool Injection:** At runtime, the agent uses an `AsyncExitStack` to safely establish concurrent SSE connections to both system and custom MCP servers, loading tools dynamically based on the bot's configuration.
+* **Strict Guardrails:** High-quality model interaction is enforced via our `GUARDRAIL_SUFFIX`. Agents are mandated to prioritize tools over internal pre-trained knowledge (Strict Entity Resolution) and are blocked from historical pivots or prompt leakage via output interception.
+
+## Engineering Practices: Quality, Error Handling & Testing
+We prioritize production-grade visibility and reliability across the platform.
+
+* **Comprehensive Testing:** Core logic is validated via automated test suites located in `backend/tests/` (e.g., `test_bots.py`). This ensures bot configurations save correctly, system prompts generate as expected, and edge cases in model interactions are caught early.
+* **Robust Error Handling:** * In the execution flow (`backend/graph/bot_runner.py`), agent execution is wrapped in an `asyncio.wait_for` timeout guard (60 seconds). If an external tool hangs, the system degrades gracefully with custom fallback messages rather than crashing.
+  * In the API (`backend/main.py`), unhandled exceptions are caught, logged with full tracebacks (`exc_info=True`), and return safe, customized error responses to the frontend.
+* **Observability & Logging:** * Every incoming HTTP request passes through a custom observability middleware that measures precise latency (`process_time`) and logs successful/failed requests with their HTTP status codes.
+  * Token usage is extracted from LLM metadata and incrementally tracked per user to monitor system health and LLM costs.
+
+## Production Readiness & Deployment
+**Infrastructure as Code (IaC) & CI/CD:**
+Moving beyond local deployments, the application uses **Terraform** (`terraform/main.tf` and `terraform/terraform.tfvars`) for automated, reproducible cloud infrastructure.
+* **Cloud Native:** The deployment pipeline targets AWS (AppRunner, S3, EC2). Environment variables toggle the application from local SQLite/ChromaDB modes directly into cloud-native AWS services for zero-friction environment parity.
+
+---
+
