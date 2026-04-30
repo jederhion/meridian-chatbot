@@ -92,3 +92,23 @@ Run tests:
 Bash
 cd backend
 pytest tests/ -v
+
+
+Comprehensive Evaluation
+Beyond isolated unit tests, the system includes an automated evaluation pipeline to score the AI agent against real-world customer scenarios and ensure it strictly adheres to Meridian Electronics' business logic.
+
+The evaluation suite (backend/evaluation.py) tests the live agent against a predefined dataset of:
+
+Happy Paths: Core workflows like inventory lookup and order status checks.
+
+Customer Authentication: Ensuring the agent correctly parses emails and PINs to retrieve sensitive account data.
+
+Edge Cases: Handling missing parameters gracefully (e.g., asking for an order ID instead of hallucinating one) and clarifying vague product requests.
+
+Out of Bounds & Adversarial: Verifying the agent refuses non-technical questions and strictly resists prompt injection attempts to leak its system prompt.
+
+Run the evaluation:
+
+Bash
+cd backend
+uv run evaluation.py
